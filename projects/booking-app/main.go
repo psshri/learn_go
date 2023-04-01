@@ -1,8 +1,10 @@
 package main
 
 import (
+	"booking-app/helper"
 	"fmt"
-	"strings"
+	"sync"
+	"time"
 )
 
 // defining variables at package level so that all the functions can access them
@@ -12,7 +14,18 @@ var conferenceName = "Go Conference"
 const conferenceTickets = 50
 
 var remainingTickets uint = 50
-var bookings []string
+
+// var bookings = make([]map[string]string, 0)
+var bookings = make([]UserData, 0)
+
+type UserData struct {
+	firstName       string
+	lastName        string
+	email           string
+	numberOfTickets uint
+}
+
+var wg = sync.WaitGroup{}
 
 func main() {
 	// defining all the variables /////////////////////////////////////////////////////////////////
@@ -59,7 +72,7 @@ func main() {
 		// fmt.Println("Enter the number of tickets you wish to buy: ")
 		// fmt.Scan(&userTickets)
 
-		isValidName, isValidEmail, isValidTicketNumber := isValid(firstName, lastName, email, userTickets)
+		isValidName, isValidEmail, isValidTicketNumber := helper.IsValid(firstName, lastName, email, userTickets, remainingTickets)
 
 		// var isValidName bool = len(firstName) > 2 && len(lastName) > 2
 		// // isValidName := len(firstName) > 2 && len(lastName) > 2
@@ -69,6 +82,9 @@ func main() {
 		if isValidName && isValidEmail && isValidTicketNumber {
 
 			createBooking(userTickets, firstName, lastName, email)
+
+			wg.Add(1)
+			go sendTicket(userTickets, firstName, lastName, email)
 
 			// remainingTickets = remainingTickets - userTickets
 
@@ -83,7 +99,7 @@ func main() {
 			// fmt.Printf("Thank you %v %v for booking %v tickets, a confirmation email will be sent to %v\n", firstName, lastName, userTickets, email)
 			// fmt.Printf("%v tickets remaining for %v\n", remainingTickets, conferenceName)
 
-			firstNames := getFirstNames(bookings)
+			firstNames := getFirstNames()
 			fmt.Printf("Bookings are made by: %v\n", firstNames)
 
 			// firstNames := []string{}
@@ -118,6 +134,7 @@ func main() {
 			continue
 		}
 		// var noTicketsRemaining bool = remainingTickets == 0
+		wg.Wait()
 	}
 
 	// city := "London"
@@ -162,13 +179,11 @@ func greetUsers() {
 	fmt.Println("This application is written in Go!")
 }
 
-func getFirstNames(bookings []string) []string {
+func getFirstNames() []string {
 	firstNames := []string{}
 	// this is how you iterate over an array in go
 	for _, booking := range bookings {
-		var names = strings.Fields(booking)
-		var firstName = names[0]
-		firstNames = append(firstNames, firstName)
+		firstNames = append(firstNames, booking.firstName)
 	}
 	// fmt.Printf("Bookings are made by: %v\n", firstNames)
 	return firstNames
@@ -177,8 +192,25 @@ func getFirstNames(bookings []string) []string {
 func createBooking(userTickets uint, firstName string, lastName string, email string) {
 	remainingTickets = remainingTickets - userTickets
 
+	// create a map for a user
+	// var userData = make(map[string]string)
+
+	// create a struct for user data
+	var userData = UserData{
+		firstName:       firstName,
+		lastName:        lastName,
+		email:           email,
+		numberOfTickets: userTickets,
+	}
+
+	// userData["firstName"] = firstName
+	// userData["lastName"] = lastName
+	// userData["email"] = email
+	// userData["numberOfTickets"] = strconv.FormatUint(uint64(userTickets), 10)
+
 	// bookings[0] = firstName + " " + lastName // this is how you add elements in an array
-	bookings = append(bookings, firstName+" "+lastName) // this is how you add elements in a slice in go
+	bookings = append(bookings, userData) // this is how you add elements in a slice in go
+	fmt.Printf("List of bookings is %v\n", bookings)
 
 	// fmt.Printf("The complete slice is : %v\n", bookings)
 	// fmt.Printf("The first element of slice is : %v\n", bookings[0])
@@ -190,4 +222,11 @@ func createBooking(userTickets uint, firstName string, lastName string, email st
 	// return remainingTickets, bookings
 }
 
-// 2:27:40
+func sendTicket(userTickets uint, firstName string, lastName string, email string) {
+	time.Sleep(10 * time.Second)
+	var ticket = fmt.Sprintf("%v tickets for %v %v", userTickets, firstName, lastName)
+	fmt.Println("############")
+	fmt.Printf("Sending ticket:\n%v\nto email address %v\n", ticket, email)
+	fmt.Println("############")
+	wg.Done()
+}
